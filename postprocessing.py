@@ -2,7 +2,7 @@ import os
 import asyncio
 import csv
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from feedgen.feed import FeedGenerator
 #from tiktokapipy.api import TikTokAPI
 from TikTokApi import TikTokApi
