@@ -5,7 +5,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '10 */4 * * *'
+    - cron: '0 * * * *'
 jobs:
   scheduled:
     runs-on: ubuntu-latest
