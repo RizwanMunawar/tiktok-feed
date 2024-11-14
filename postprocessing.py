@@ -31,74 +31,60 @@ async def runscreenshot(playwright: Playwright, url, screenshotpath):
     await browser.close()
 
 async def user_videos():
-
     with open('subscriptions.csv') as f:
         cf = csv.DictReader(f, fieldnames=['username'])
         for row in cf:
             user = row['username']
-
             print(f'Running for user \'{user}\'')
 
+            # Initialize the feed generator
             fg = FeedGenerator()
             fg.id('https://www.tiktok.com/@' + user)
             fg.title(user + ' TikTok')
-            fg.link( href='http://tiktok.com', rel='alternate' )
+            fg.link(href='http://tiktok.com', rel='alternate')
             fg.logo(ghRawURL + 'tiktok-rss.png')
-            fg.subtitle('OK Boomer, all the latest TikToks from ' + user)
-            fg.link( href=ghRawURL + 'rss/' + user + '.xml', rel='self' )
+            fg.subtitle('All the latest TikToks from ' + user)
+            fg.link(href=ghRawURL + 'rss/' + user + '.xml', rel='self')
             fg.language('en')
 
-            # Set the last modification time for the feed to be the most recent post, else now.
-            updated=None
-            
+            # Fetch and process the latest video
+            updated = None
             async with TikTokApi() as api:
                 await api.create_sessions(ms_tokens=[ms_token], num_sessions=1, sleep_after=3, headless=False)
                 ttuser = api.user(user)
+
                 try:
-                    user_data = await ttuser.info()
-                    
-                    async for video in ttuser.videos(count=1):
+                    async for video in ttuser.videos(count=1):  # Fetch only the latest video
                         fe = fg.add_entry()
-                        link = "https://tiktok.com/@" + user + "/video/" + video.id
-                        fe.id(link)
-                        ts = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
-                        fe.published(ts)
-                        fe.updated(ts)
-                        updated = max(ts, updated) if updated else ts
-                        if video.as_dict['desc']:
-                            fe.title(video.as_dict['desc'][0:255])
-                        else:
-                            fe.title("No Title")
-                        fe.link(href=link)
-                        if video.as_dict['desc']:
-                            content = video.as_dict['desc'][0:255]
-                        else:
-                            content = "No Description"
-                        if video.as_dict['video']['cover']:
-                            videourl = video.as_dict['video']['cover']
-                            parsed_url = urlparse(videourl)
-                            path_segments = parsed_url.path.split('/')
-                            last_segment = [seg for seg in path_segments if seg][-1]
+                        video_url = f"https://tiktok.com/@{user}/video/{video.id}"
+                        
+                        # Generate title and content with a fallback
+                        title = video.as_dict.get('desc', 'No Title')[:255]
+                        description = title  # Default content is title unless more detailed content available
+                        
+                        # If available, add the thumbnail as part of the description
+                        if 'cover' in video.as_dict['video']:
+                            thumbnail_url = video.as_dict['video']['cover']
+                            description = f'<img src="{thumbnail_url}" alt="Video Thumbnail" /> {description}'
 
-                            screenshotsubpath = "thumbnails/" + user + "/screenshot_" + last_segment + ".jpg"
-                            screenshotpath = os.path.dirname(os.path.realpath(__file__)) + "/" + screenshotsubpath
-                            if not os.path.isfile(screenshotpath):
-                                async with async_playwright() as playwright:
-                                    await runscreenshot(playwright, videourl, screenshotpath)
-                            screenshoturl =  ghRawURL + screenshotsubpath
-                            content = '<img src="' + screenshoturl + '" / > ' + content    
-                            #content = screenshoturl + ' ' + content    
-                            #content = '<media:content url="' + screenshoturl + '" type="image/jpeg" medium="image"> ' + content 
-                            #content = '<![CDATA[<img src="' + screenshoturl + '" />]]> ' + content
+                        # Populate the entry
+                        fe.id(video_url)  # Unique video URL as GUID
+                        fe.title(title)
+                        fe.link(href=video_url)
+                        fe.description(description)
+                        
+                        # Timestamp the item and update feed's last modified date
+                        publish_time = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
+                        fe.pubDate(publish_time)
+                        fg.updated(publish_time)
+                        updated = publish_time if not updated else max(updated, publish_time)
 
-                        fe.content(content)
-                    fg.updated(updated)
-                    fg.rss_file('rss/' + user + '.xml', pretty=True) # Write the RSS feed to a file
-                        #print(video)
-                        #print(video.as_dict)
+                    # Set feed-level lastBuildDate to latest video timestamp
+                    fg.lastBuildDate(updated)
+                    fg.rss_file(f'rss/{user}.xml', pretty=True)  # Write the RSS feed to a file
+
                 except Exception as e:
-                    print(e)
-
+                    print(f"Error processing user {user}: {e}")
 
 if __name__ == "__main__":
     asyncio.run(user_videos())
