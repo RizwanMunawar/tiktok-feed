@@ -40,7 +40,7 @@ async def user_videos():
 
             # Define the date one week ago
             today = datetime.now(timezone.utc).date()
-            one_week_ago = today - timedelta(days=7)
+            one_week_ago = today - timedelta(days=3)
 
             # Fetch the latest video(s) and only update if it was posted within the last week
             async with TikTokApi() as api:
@@ -48,7 +48,7 @@ async def user_videos():
                 ttuser = api.user(user)
 
                 try:
-                    async for video in ttuser.videos(count=10):  # Fetch up to the latest 10 videos
+                    async for video in ttuser.videos(count=3):  # Fetch up to the latest 10 videos
                         # Get the video's publish date
                         publish_time = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
 
