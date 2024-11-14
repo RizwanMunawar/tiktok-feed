@@ -1,10 +1,6 @@
-![TikTok RSS Logo](https://tiktokrss.conoroneill.com/favicon-32x32.png)
 # TikTok RSS Using GitHub Actions
 
 Generate usable RSS feeds from TikTok using GitHub Actions and GitHub Pages.
-
-
-**NOTE March 2024: This seems to work again due to improvements in the original TikTok library. It requires an on-the-fly patch to that underlying TikTok library, which is hopefully only temporary**
 
 ## Setup for GitHub Actions
 * To get your own instance running
