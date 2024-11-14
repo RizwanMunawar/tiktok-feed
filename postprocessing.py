@@ -38,25 +38,22 @@ async def user_videos():
             fg.link(href=f"{ghRawURL}rss/{user}.xml", rel='self')
             fg.language('en')
 
-            # Define today and yesterday for date checking
+            # Define the date one week ago
             today = datetime.now(timezone.utc).date()
-            yesterday = today - timedelta(days=3)
+            one_week_ago = today - timedelta(days=7)
 
-            # Fetch the latest video and only update if it was posted today or yesterday
+            # Fetch the latest video(s) and only update if it was posted within the last week
             async with TikTokApi() as api:
                 await api.create_sessions(ms_tokens=[ms_token], num_sessions=1, sleep_after=3, headless=False)
                 ttuser = api.user(user)
 
                 try:
-                    async for video in ttuser.videos(count=1):  # Fetch only the latest video
+                    async for video in ttuser.videos(count=10):  # Fetch up to the latest 10 videos
                         # Get the video's publish date
                         publish_time = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
 
-                        # Check if the video was posted today or yesterday
-                        if publish_time.date() in (today, yesterday):
-                            # Clear any previous entries
-                            fg._FeedGenerator__entries = []
-
+                        # Check if the video was posted within the last week
+                        if publish_time.date() >= one_week_ago:
                             fe = fg.add_entry()
                             video_url = f"https://tiktok.com/@{user}/video/{video.id}"
 
@@ -73,15 +70,15 @@ async def user_videos():
                             fe.link(href=video_url)
                             fe.description(description)
 
-                            # Set publish date and feed's last updated date
+                            # Set publish date for the entry
                             fe.pubDate(publish_time)
-                            fg.updated(publish_time)
-                            fg.lastBuildDate(publish_time)
 
-                            # Write the video (if posted today or yesterday) to RSS file
-                            fg.rss_file(f'rss/{user}.xml', pretty=True)
-                        else:
-                            print(f"No new video posted today or yesterday for user {user}.")
+                            # Update feed's last modified date if the video is the latest in this week
+                            fg.updated(max(publish_time, fg.updated() or publish_time))
+
+                    # Set feed-level lastBuildDate to the latest entry's publish time
+                    fg.lastBuildDate(fg.updated())
+                    fg.rss_file(f'rss/{user}.xml', pretty=True)  # Write the RSS feed to a file
 
                 except Exception as e:
                     print(f"Error processing user {user}: {e}")
