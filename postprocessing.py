@@ -42,7 +42,6 @@ async def user_videos():
             fg = FeedGenerator()
             fg.id('https://www.tiktok.com/@' + user)
             fg.title(user + ' TikTok')
-            fg.author( {'name':'Conor ONeill','email':'conor@conoroneill.com'} )
             fg.link( href='http://tiktok.com', rel='alternate' )
             fg.logo(ghRawURL + 'tiktok-rss.png')
             fg.subtitle('OK Boomer, all the latest TikToks from ' + user)
@@ -57,8 +56,7 @@ async def user_videos():
                 ttuser = api.user(user)
                 try:
                     user_data = await ttuser.info()
-                    #print(user_data)
-
+                    
                     async for video in ttuser.videos(count=1):
                         fe = fg.add_entry()
                         link = "https://tiktok.com/@" + user + "/video/" + video.id
