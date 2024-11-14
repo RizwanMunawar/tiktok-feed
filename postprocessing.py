@@ -38,7 +38,11 @@ async def user_videos():
             fg.link(href=f"{ghRawURL}rss/{user}.xml", rel='self')
             fg.language('en')
 
-            # Fetch the latest video and only update if it was posted today
+            # Define today and yesterday for date checking
+            today = datetime.now(timezone.utc).date()
+            yesterday = today - timedelta(days=1)
+
+            # Fetch the latest video and only update if it was posted today or yesterday
             async with TikTokApi() as api:
                 await api.create_sessions(ms_tokens=[ms_token], num_sessions=1, sleep_after=3, headless=False)
                 ttuser = api.user(user)
@@ -47,10 +51,9 @@ async def user_videos():
                     async for video in ttuser.videos(count=1):  # Fetch only the latest video
                         # Get the video's publish date
                         publish_time = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
-                        today = datetime.now(timezone.utc).date()
 
-                        # Check if the video was posted today
-                        if publish_time.date() == today:
+                        # Check if the video was posted today or yesterday
+                        if publish_time.date() in (today, yesterday):
                             # Clear any previous entries
                             fg._FeedGenerator__entries = []
 
@@ -75,10 +78,10 @@ async def user_videos():
                             fg.updated(publish_time)
                             fg.lastBuildDate(publish_time)
 
-                            # Write only today's video to RSS file
+                            # Write the video (if posted today or yesterday) to RSS file
                             fg.rss_file(f'rss/{user}.xml', pretty=True)
                         else:
-                            print(f"No new video posted today for user {user}.")
+                            print(f"No new video posted today or yesterday for user {user}.")
 
                 except Exception as e:
                     print(f"Error processing user {user}: {e}")
