@@ -40,7 +40,7 @@ async def user_videos():
 
             # Define today and yesterday for date checking
             today = datetime.now(timezone.utc).date()
-            yesterday = today - timedelta(days=1)
+            yesterday = today - timedelta(days=3)
 
             # Fetch the latest video and only update if it was posted today or yesterday
             async with TikTokApi() as api:
