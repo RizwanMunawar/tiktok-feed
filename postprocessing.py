@@ -37,51 +37,53 @@ async def user_videos():
             user = row['username']
             print(f'Running for user \'{user}\'')
 
-            # Initialize the feed generator
+            # Initialize the feed generator fresh each time to avoid old entries
             fg = FeedGenerator()
-            fg.id('https://www.tiktok.com/@' + user)
-            fg.title(user + ' TikTok')
+            fg.id(f'https://www.tiktok.com/@{user}')
+            fg.title(f"{user}'s TikTok Feed")
             fg.link(href='http://tiktok.com', rel='alternate')
-            fg.logo(ghRawURL + 'tiktok-rss.png')
-            fg.subtitle('All the latest TikToks from ' + user)
-            fg.link(href=ghRawURL + 'rss/' + user + '.xml', rel='self')
+            fg.logo(f"{ghRawURL}tiktok-rss.png")
+            fg.subtitle(f"Latest TikToks from {user}")
+            fg.link(href=f"{ghRawURL}rss/{user}.xml", rel='self')
             fg.language('en')
 
-            # Fetch and process the latest video
-            updated = None
+            # Fetch the latest video and update the RSS feed with only that video
             async with TikTokApi() as api:
                 await api.create_sessions(ms_tokens=[ms_token], num_sessions=1, sleep_after=3, headless=False)
                 ttuser = api.user(user)
 
                 try:
-                    async for video in ttuser.videos(count=1):  # Fetch only the latest video
+                    # Fetch only the latest video
+                    async for video in ttuser.videos(count=1):
+                        # Clear previous entries by creating a single entry only
+                        fg._FeedGenerator__entries = []
+
                         fe = fg.add_entry()
                         video_url = f"https://tiktok.com/@{user}/video/{video.id}"
-                        
-                        # Generate title and content with a fallback
+
+                        # Title and description
                         title = video.as_dict.get('desc', 'No Title')[:255]
-                        description = title  # Default content is title unless more detailed content available
-                        
-                        # If available, add the thumbnail as part of the description
+                        description = title
                         if 'cover' in video.as_dict['video']:
                             thumbnail_url = video.as_dict['video']['cover']
                             description = f'<img src="{thumbnail_url}" alt="Video Thumbnail" /> {description}'
 
-                        # Populate the entry
-                        fe.id(video_url)  # Unique video URL as GUID
+                        # Populate entry
+                        fe.id(video_url)  # GUID as video URL
                         fe.title(title)
                         fe.link(href=video_url)
                         fe.description(description)
-                        
-                        # Timestamp the item and update feed's last modified date
+
+                        # Timestamp
                         publish_time = datetime.fromtimestamp(video.as_dict['createTime'], timezone.utc)
                         fe.pubDate(publish_time)
                         fg.updated(publish_time)
-                        updated = publish_time if not updated else max(updated, publish_time)
+                        
+                        # Set feed-level lastBuildDate
+                        fg.lastBuildDate(publish_time)
 
-                    # Set feed-level lastBuildDate to latest video timestamp
-                    fg.lastBuildDate(updated)
-                    fg.rss_file(f'rss/{user}.xml', pretty=True)  # Write the RSS feed to a file
+                    # Write only the latest video to RSS file
+                    fg.rss_file(f'rss/{user}.xml', pretty=True)
 
                 except Exception as e:
                     print(f"Error processing user {user}: {e}")
