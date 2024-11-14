@@ -59,7 +59,7 @@ async def user_videos():
                     user_data = await ttuser.info()
                     #print(user_data)
 
-                    async for video in ttuser.videos(count=10):
+                    async for video in ttuser.videos(count=1):
                         fe = fg.add_entry()
                         link = "https://tiktok.com/@" + user + "/video/" + video.id
                         fe.id(link)
