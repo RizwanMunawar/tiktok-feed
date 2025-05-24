@@ -39,8 +39,7 @@ async def user_videos():
             fg.language('en')
 
             # Define the date one week ago
-            today = datetime.now(timezone.utc).date()
-            one_week_ago = today - timedelta(days=3)
+            one_week_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
             # Fetch the latest video(s) and only update if it was posted within the last week
             async with TikTokApi() as api:
